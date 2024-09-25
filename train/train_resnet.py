@@ -19,8 +19,7 @@ from tensorflow.keras.applications import ResNet101
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
-
-from tensorflow.keras.applications import VGG16
+from tensorflow.keras.regularizers import l2
 
 def plot_training_history(history):
     accuracy = history.history["accuracy"]
@@ -83,7 +82,7 @@ base_model.trainable = False
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = Dropout(0.5)(x) 
-x = Dense(1024, activation='relu')(x)
+x = Dense(1024, activation='relu', kernel_regularizer=l2(0.001))(x)
 predictions = Dense(3, activation='softmax')(x)
 
 resnet_model = Model(inputs=base_model.input, outputs=predictions)

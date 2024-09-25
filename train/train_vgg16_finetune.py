@@ -15,42 +15,11 @@ from tensorflow.keras.preprocessing.image import img_to_array, load_img
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import scipy.ndimage
 
-from tensorflow.keras.applications import ResNet101
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
 from tensorflow.keras.applications import VGG16
-
-def plot_training_history(history):
-    accuracy = history.history["accuracy"]
-    val_accuracy = history.history["val_accuracy"]
-    loss = history.history["loss"]
-    val_loss = history.history["val_loss"]
-    
-    epochs = range(1, len(accuracy) + 1)
-
-    # accuracy
-    plt.figure(figsize=(12, 4))
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, accuracy, "bo", label="Training accuracy")
-    plt.plot(epochs, val_accuracy, "b", label="Validation accuracy")
-    plt.title("Training and Validation Accuracy")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy")
-    plt.legend()
-
-    # loss
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, loss, "bo", label="Training loss")
-    plt.plot(epochs, val_loss, "b", label="Validation loss")
-    plt.title("Training and Validation Loss")
-    plt.xlabel("Epochs")
-    plt.ylabel("Loss")
-    plt.legend()
-
-    plt.tight_layout()
-    plt.show()
     
 train_datagen = ImageDataGenerator(
         featurewise_center=False,  # set input mean to 0 over the dataset
@@ -91,7 +60,7 @@ vgg16_model.compile(optimizer=Adam(learning_rate=0.001),
               loss='categorical_crossentropy', 
               metrics=['accuracy'])
 
-callbacks = [ keras.callbacks.ModelCheckpoint( filepath="vgg16.keras", save_best_only=True, monitor="val_loss") ]
+callbacks = [ keras.callbacks.ModelCheckpoint( filepath="vgg16_finetuned.keras", save_best_only=True, monitor="val_loss") ]
 
 history = vgg16_model.fit(
     train_data,
@@ -102,9 +71,9 @@ history = vgg16_model.fit(
     callbacks=callbacks
 )
 
-np.save('vgg16_history.npy',history)
+np.save('vgg16_finetuned_history.npy',history)
 # history = np.load('vgg16_history.npy',allow_pickle='TRUE').item()
 
-test_model = keras.models.load_model("vgg16.keras")
+test_model = keras.models.load_model("vgg16_finetuned.keras")
 test_loss, test_acc = test_model.evaluate(validation_data)
 print(f"Test accuracy: {test_acc:.3f}")
