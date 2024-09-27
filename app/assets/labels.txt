@@ -1,0 +1,3 @@
+normal
+oral_cancer
+pre_cancer
