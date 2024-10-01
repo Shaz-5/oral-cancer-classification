@@ -1,9 +1,7 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_tflite/flutter_tflite.dart';
 import 'package:image_picker/image_picker.dart';
-
 import 'dart:developer' as devtools;
 
 void main() {
@@ -13,11 +11,10 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
+      title: 'Oral Cancer Detection',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -38,94 +35,86 @@ class _MyHomePageState extends State<MyHomePage> {
   File? filePath;
   String label = '';
   double confidence = 0.0;
+  bool isLoading = false; // Track loading state
 
   Future<void> _tfLiteInit() async {
-    String? res = await Tflite.loadModel(
+    try {
+      await Tflite.loadModel(
         model: "assets/model.tflite",
         labels: "assets/labels.txt",
-        numThreads: 1, // defaults to 1
-        isAsset:
-            true, // defaults to true, set to false to load resources outside assets
-        useGpuDelegate:
-            false // defaults to false, set to true to use GPU delegate
-        );
+      );
+    } catch (e) {
+      devtools.log("Error loading model: $e");
+      _showErrorDialog("Failed to load model.");
+    }
   }
 
-  selectImageGallery() async {
-  final ImagePicker picker = ImagePicker();
-  
-  try {
-    // Pick an image.
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+  Future<void> _selectImage(ImageSource source) async {
+    final picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: source);
+      if (image == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image selected')),
+        );
+        return;
+      }
 
-    if (image == null) return;
+      setState(() {
+        filePath = File(image.path);
+        isLoading = true; // Set loading state
+      });
 
-    var imageMap = File(image.path);
+      devtools.log("Running model on image: ${image.path}");
 
+      var recognitions = await Tflite.runModelOnImage(
+        path: image.path,
+        imageMean: 0.0,
+        imageStd: 255.0,
+        numResults: 3,
+        threshold: 0.2,
+        asynch: true,
+      );
+
+      if (recognitions != null && recognitions.isNotEmpty) {
+        setState(() {
+          confidence = recognitions[0]['confidence'] * 100;
+          label = recognitions[0]['label'].toString();
+        });
+      } else {
+        _showErrorDialog("No predictions made.");
+      }
+    } catch (e) {
+      _showErrorDialog("Error selecting image: $e");
+    } finally {
+      setState(() {
+        isLoading = false; // Reset loading state
+      });
+    }
+  }
+
+  void _clearImage() {
     setState(() {
-      filePath = imageMap;
+      filePath = null;
+      label = '';
+      confidence = 0.0;
     });
+  }
 
-    // Log before running the model
-    devtools.log("Running model on image: ${image.path}");
-
-    var recognitions = await Tflite.runModelOnImage(
-      path: image.path, // required
-      imageMean: 0.0, // defaults to 117.0
-      imageStd: 255.0, 
-      numResults: 3, // defaults to 5
-      threshold: 0.2, // defaults to 0.1
-      asynch: true // defaults to true
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
-
-    if (recognitions == null) {
-      devtools.log("recognitions is Null");
-      return;
-    }
-    
-    devtools.log("Recognitions: ${recognitions.toString()}");
-    
-    setState(() {
-      confidence = (recognitions[0]['confidence'] * 100);
-      label = recognitions[0]['label'].toString();
-    });
-
-  } catch (e) {
-    devtools.log("Error: $e");
-  }
-}
-
-  selectImageCamera() async {
-    final ImagePicker picker = ImagePicker();
-    // Pick an image.
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
-
-    if (image == null) return;
-
-    var imageMap = File(image.path);
-
-    setState(() {
-      filePath = imageMap;
-    });
-
-    var recognitions = await Tflite.runModelOnImage(
-        path: image.path, // required
-        imageMean: 0.0, // defaults to 117.0
-        imageStd: 255.0, // defaults to 1.0
-        numResults: 3, // defaults to 5
-        threshold: 0.2, // defaults to 0.1
-        asynch: true // defaults to true
-        );
-
-    if (recognitions == null) {
-      devtools.log("recognitions is Null");
-      return;
-    }
-    devtools.log(recognitions.toString());
-    setState(() {
-      confidence = (recognitions[0]['confidence'] * 100);
-      label = recognitions[0]['label'].toString();
-    });
   }
 
   @override
@@ -150,107 +139,101 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Center(
           child: Column(
             children: [
-              const SizedBox(
-                height: 12,
-              ),
+              const SizedBox(height: 36),
               Card(
-                elevation: 20,
-                clipBehavior: Clip.hardEdge,
-                child: SizedBox(
+                elevation: 10,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Container(
                   width: 300,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        const SizedBox(
-                          height: 18,
-                        ),
-                        Container(
-                          height: 280,
-                          width: 280,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            image: const DecorationImage(
-                              image: AssetImage('assets/upload.png'),
+                  padding: const EdgeInsets.all(24), // Increased padding
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Container(
+                            height: 250,
+                            width: 250,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.grey[200],
                             ),
+                            child: filePath == null
+                                ? const Center(child: Text('No Image Selected'))
+                                : ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.file(
+                                      filePath!,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
                           ),
-                          child: filePath == null
-                              ? const Text('')
-                              : Image.file(
-                                  filePath!,
-                                  fit: BoxFit.fill,
-                                ),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
-                            children: [
-                              Text(
-                                label,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                          if (filePath != null)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: GestureDetector(
+                                onTap: _clearImage,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withOpacity(0.7),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  padding: const EdgeInsets.all(6),
+                                  child: const Icon(
+                                    Icons.clear,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(
-                                height: 12,
-                              ),
-                              Text(
-                                "Confidence: ${confidence.toStringAsFixed(0)}%",
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const SizedBox(
-                                height: 12,
-                              ),
-                            ],
-                          ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 30), // Increased spacing
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 24, // Increased font size
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 28), // Increased spacing
+                      Text(
+                        "Confidence: ${confidence.toStringAsFixed(0)}%",
+                        style: const TextStyle(fontSize: 18), // Increased font size
+                      ),
+                      const SizedBox(height: 18), // Increased spacing
+                      if (isLoading) const CircularProgressIndicator(),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(
-                height: 8,
-              ),
+              const SizedBox(height: 56), // Increased spacing
               ElevatedButton(
-                onPressed: () {
-                  selectImageCamera();
-                },
+                onPressed: () => _selectImage(ImageSource.camera),
                 style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    foregroundColor: Colors.black),
-                child: const Text(
-                  "Take a Photo",
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16), // Increased padding
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: const Text("Take a Photo"),
               ),
-              const SizedBox(
-                height: 8,
-              ),
+              const SizedBox(height: 36), // Increased spacing
               ElevatedButton(
-                onPressed: () {
-                  selectImageGallery();
-                },
+                onPressed: () => _selectImage(ImageSource.gallery),
                 style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    foregroundColor: Colors.black),
-                child: const Text(
-                  "Select from gallery",
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16), // Increased padding
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
+                child: const Text("Select from Gallery"),
               ),
+              const SizedBox(height: 30), // Extra bottom space
             ],
           ),
         ),
