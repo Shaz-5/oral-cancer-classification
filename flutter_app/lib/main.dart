@@ -117,6 +117,19 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  Color _getLabelColor(String label) {
+    switch (label) {
+      case 'Normal':
+        return Colors.green; // Color for normal
+      case 'Oral Cancer':
+        return Colors.redAccent; // Color for oral cancer
+      case 'Pre Cancer':
+        return Colors.deepOrangeAccent; // Dark orange for pre cancer
+      default:
+        return Colors.black; // Default color
+    }
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -195,9 +208,10 @@ class _MyHomePageState extends State<MyHomePage> {
                       const SizedBox(height: 30), // Increased spacing
                       Text(
                         label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 24, // Increased font size
                           fontWeight: FontWeight.bold,
+                          color: _getLabelColor(label), // Get color based on label
                         ),
                       ),
                       const SizedBox(height: 28), // Increased spacing
