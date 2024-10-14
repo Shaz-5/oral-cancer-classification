@@ -116,3 +116,14 @@ The converted `.tflite` model is used in a mobile app built with Flutter. The ap
 ## Results
 
 After training and evaluating the models, the performance is measured using accuracy and loss metrics. Each model's test accuracy is displayed along with a confusion matrix showing the true vs predicted labels. The final model, DenseNet201, provides the best performance for oral cancer detection with a test accuracy of about 91%.
+
+## References
+- Chollet, F., & Chollet, F. (2021). Deep Learning with Python, Second Edition. Manning.
+
+- Load and preprocess images. (n.d.). TensorFlow. https://www.tensorflow.org/tutorials/load_data/images
+
+- Chollet, B. F. (n.d.). Building powerful image classification models using very little data. https://blog.keras.io/building-powerful-image-classification-models-using-very-little-data.html
+
+- Team, K. (n.d.). Keras documentation: Transfer learning & fine-tuning. https://keras.io/guides/transfer_learning/
+
+- Goceri, E. Medical image data augmentation: techniques, comparisons and interpretations. Artif Intell Rev 56, 12561–12605 (2023). 
